@@ -1,0 +1,14 @@
+{
+  "name": "mission-4-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tato",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "node": "^22.16.0"
+  }
+}
