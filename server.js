@@ -21,27 +21,22 @@ app.use(express.json());
 
 //*~~~~ POST Endpoint ~~~~~
 
-app.post("./echo", (req, res) => {
-    res.json({
-        message: "You sent this",
-        data: req.body,
-    });
-});
+app.post("/echo", async (req, res) => {
+
 
 //*~~~~~ Initial AI Function ~~~~~
 
-async function main() {
     const response = await ai.models.generateContent({
         model: "gemini-2.0-flash",
         contents: "Explain how AI works in a few words",
     });
     console.log(response.text);
-}
 
-main();
-
-
-
+    res.json({
+        message: "You sent this",
+        data: req.body,
+    });
+});
 
 //*~~~~~ Start the server ~~~~~
 
