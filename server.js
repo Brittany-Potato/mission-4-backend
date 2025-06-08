@@ -13,7 +13,14 @@ const port = 4000;
 
 const API_KEY = process.env.API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY });
-const systemPrompt = "Your name is Tina. You are an insurance consultant for Turners Insurance. You are formal, helpful and supportive. When the conversation starts you will ask the customer between 5-8 questions to figure out what insurance plan the customer should go for. Your questions and responses will be dynamic allowing you to mix mostly formal conversation with partially informal humanoid responses.  Your first response will be “I’m Tina.  I help you to choose right insurance policy.  May I ask you a few personal questions to make sure I recommend the best policy for you?” and you will only respond if the user agrees to be asked. Your task is to asked questions to uncover what insurance plan the customer should go for. The insurance options include: Mechanical Breakdown Insurance (MBI), Comprehensive Car Insurance, Third Party Car Insurance. Example question: “do you need coverage for your own car or just 3rd party?”. At the end of your 5-8 questions you will recommend what insurance plan the customer should go for and why you recommend it, limiting your response to under 20 words."
+const systemPrompt = `Your name is Tina. Your role is to calculate what care insurance the customer should go for The first question you ask is “I’m Tina  
+I help you to choose right insurance policy  May I ask you a few personal questions to make sure I recommend the best policy for you?” If the user agrees to  
+“May I ask you a few personal questions to make sure I recommend the best policy for you?” Dynamically using formal and semi casual language ask between 5 and 
+8 questions to determine what insurance policy will suit the customer best The available insurance policies are: “Mechanical Breakdown Insurance (MBI), Comprehensive 
+Car Insurance, Third Party Car Insurance” You will only ask one question at a time and will try to keep a fluid flow with the conversation Your questions will change 
+depending on the customers responses Language: formal and casual humanoid lingo and language. Once you have asked between 5and 8 questions you will decide what 
+insurance policy the customer should go for There are 2 business rules: MBI is not available to trucks and racing cars.  And Comprehensive Car Insurance is only 
+available to any motor vehicles less than 10 years old.`;
 
 //*~~~~~ Middleware ~~~~~
 
@@ -23,7 +30,7 @@ app.use(cors());
 //*~~~~~ GET Endpoint ~~~~~
 
 app.get("/quote", (req, res) => {
-  res.json({ message: "GET /quote endpoint is working!" });
+  res.json({ message: "" });
 });
 
 //*~~~~ POST Endpoint ~~~~~
@@ -31,42 +38,41 @@ app.get("/quote", (req, res) => {
 app.post("/quote", async (req, res) => {
   console.log("Received POST request with body:", req.body);
 
-    const userMessage = req.body.message;
-    console.log('34', userMessage);
-   if (!userMessage) {
-    return res.status(400).json({ error: "Missing 'message' in request body" });
+  const conversation = req.body.conversation;
+
+  if (!conversation || !Array.isArray(conversation) || conversation.length === 0) {
+    return res.status(400).json({ error: "Missing or invalid 'conversation' array in request body" })
   }
+  
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-pro",
+      contents: conversation, // <-- Pass the array directly!
+      config: {
+        systemInstruction: {
+          role: "system",
+          parts: [{ text: systemPrompt }],
+        },
+      },
+    });
+    console.log(response);
 
+    const reply = response.candidates?.[0]?.content?.parts?.[0]?.text || "No AI response";
+    console.log("Tina says:" + reply);
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: [
-      {
-        role: "user",
-        parts: [{
-          text: userMessage
-        }]
-      }
-    ],
-    config: {
-      systemInstruction: 
-        {
-          role: "assistant",
-          parts: [{ text: systemPrompt }]
-        }
-      
-    }
-  });
-  console.log(response);
+    // Append AI reply to the conversation array
+    conversation.push({
+      role: "model",
+      parts: [{ text: reply }]
+    });
 
-//   console.log(JSON.stringify(response, null, 2));
-
-  const reply = response.candidates?.[0]?.content?.parts?.[0]?.text || "No AI response";
-  console.log("Tina says:" + reply);
-
-  res.send({ message: reply });
-});
-//*~~~~~ Start the server ~~~~~
+    res.send({ message: reply });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "AI service error" });
+  }
+});//*~~~~~ Start the server ~~~~~
 
 app.listen(port, () => {
   console.log(`Server is listening at http://localhost:${port}`);
